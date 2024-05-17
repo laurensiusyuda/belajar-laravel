@@ -18,6 +18,9 @@ class PostController extends Controller
         // menggunakan elequent
         $posts = Post::active()->get();
 
+        //menampilkan hasil soft deletes
+        // $posts = Post::active()->withTrashed()->get();
+
         // menggunakan query builder
         // $posts_query  = DB::table('posts')->select('id','title','content','created_at')->where('active',true)->get();
 
@@ -51,11 +54,9 @@ class PostController extends Controller
         $content = $request->input('content');
 
         // menggunakan elequent
-        Post::insert([
+        Post::create([
             'title' => $title,
             'content' => $content,
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s')
         ]);
 
         // DB::table('posts')->insert([
@@ -79,8 +80,15 @@ class PostController extends Controller
     public function show($id)
     {
         $post = Post::where('id','=',$id)->first();
+
+        // memberikan limit
+        $comments = $post->comments()->limit(2)->get();
+        $total_comments = $post->total_comments();
+
         $return_data = [
-            'blog' => $post
+            'blog'            => $post,
+            'comments'        => $comments,
+            'total_comments'  => $total_comments,
         ];
         return view('posts.show',$return_data);
     }
