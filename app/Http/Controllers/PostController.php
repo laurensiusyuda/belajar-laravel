@@ -1,125 +1,105 @@
 <?php
 
 namespace App\Http\Controllers;
+
+use App\Mail\BlogPosted;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class PostController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index()
     {
-        // menggunakan elequent
+        if (!Auth::check())
+        {
+            return redirect('login');
+        }
         $posts = Post::active()->get();
-
-        //menampilkan hasil soft deletes
-        // $posts = Post::active()->withTrashed()->get();
-
-        // menggunakan query builder
-        // $posts_query  = DB::table('posts')->select('id','title','content','created_at')->where('active',true)->get();
-
-        $return_data =
-        [
-            'blogs' => $posts,
-        ];
-
-        return view('posts.index',$return_data);
+            $return_data =
+            [
+                'blogs' => $posts,
+            ];
+         return view('posts.index',$return_data);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
+
     public function create()
     {
+        if (!Auth::check())
+        {
+            return redirect('login');
+        }
         return view('posts.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
+
     public function store(Request $request)
     {
+        if (!Auth::check())
+        {
+            return redirect('login');
+        }
         $title = $request->input('title');
         $content = $request->input('content');
-
-        // menggunakan elequent
-        Post::create([
+         $request->validate([
+            'title' => 'required',
+            'content' => 'required',
+        ], [
+            'title.required' => 'Judul wajib diisi.',
+            'content.required' => 'Konten wajib diisi.',
+        ]);
+        $post = Post::create([
             'title' => $title,
             'content' => $content,
         ]);
-
-        // DB::table('posts')->insert([
-        //     'title' => $title,
-        //     'content' => $content,
-        //     'created_at' => date('Y-m-d H:i:s'),
-        //     'updated_at' => date('Y-m-d H:i:s')
-        // ]);
-
+        Mail::to(Auth::user()->email)->send(new BlogPosted($post));
         return redirect('posts');
     }
 
 
-
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
+    public function show($slug)
     {
-        $post = Post::where('id','=',$id)->first();
-
-        // memberikan limit
+        if (!Auth::check())
+        {
+            return redirect('login');
+        }
+        $post = Post::where('slug', $slug)->firstOrFail();
         $comments = $post->comments()->limit(2)->get();
         $total_comments = $post->total_comments();
-
         $return_data = [
             'blog'            => $post,
             'comments'        => $comments,
             'total_comments'  => $total_comments,
         ];
+
         return view('posts.show',$return_data);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
+    public function edit($slug)
     {
-        $post = Post::where('id','=',$id)->first();
+        if (!Auth::check())
+        {
+            return redirect('login');
+        }
+        $post = Post::where('slug', $slug)->firstOrFail();
         $return_data = [
             'blog' => $post
         ];
         return view('posts.edit',$return_data);
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function update(Request $request, $id)
     {
+        if (!Auth::check())
+        {
+            return redirect('login');
+        }
         $title = $request->input('title');
         $content = $request->input('content');
-
         Post::where('id', '=', $id)->update([
             'title' => $title,
             'content' => $content,
@@ -128,14 +108,12 @@ class PostController extends Controller
         return redirect("posts/{$id}");
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function destroy($id)
     {
+        if (!Auth::check())
+        {
+            return redirect('login');
+        }
         Post::where('id','=',$id)->delete();
         return redirect('posts');
     }
